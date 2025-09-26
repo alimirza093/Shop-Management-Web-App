@@ -69,11 +69,11 @@ def update_item(item_name: str, item: dict = Body(...)):
         if not update_fields:
             return {"error": "کوئی فیلڈ اپڈیٹ کرنے کے لیے فراہم نہیں کی گئی۔"}
         result = collection.update_one({"name": item_name}, {"$set": update_fields})
-        item = collection.find_one({"name": item_name}, {"_id": 0})
+        db_item = collection.find_one({"name": item_name}, {"_id": 0}) #type:ignore
         if result.matched_count:
             return {
                 "message": "آئٹم کامیابی سے اپڈیٹ ہو گیا۔",
-                "data": item,
+                "data": db_item,
             }
         else:
             return {"error": "آئٹم نہیں ملا۔"}

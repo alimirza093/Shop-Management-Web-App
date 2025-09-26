@@ -3,7 +3,7 @@ from pymongo import MongoClient
 from validations import Item
 from db import collection
 
-if not collection:
+if collection is None:
     raise Exception("Database connection failed")
 else:
     print("Database connected successfully")
@@ -69,8 +69,12 @@ def update_item(item_name: str, item: dict = Body(...)):
         if not update_fields:
             return {"error": "کوئی فیلڈ اپڈیٹ کرنے کے لیے فراہم نہیں کی گئی۔"}
         result = collection.update_one({"name": item_name}, {"$set": update_fields})
+        item = collection.find_one({"name": item_name}, {"_id": 0})
         if result.matched_count:
-            return {"message": "آئٹم کامیابی سے اپڈیٹ ہو گیا۔"}
+            return {
+                "message": "آئٹم کامیابی سے اپڈیٹ ہو گیا۔",
+                "data": item,
+            }
         else:
             return {"error": "آئٹم نہیں ملا۔"}
     except Exception as e:

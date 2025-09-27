@@ -63,9 +63,9 @@ API Endpoints
 
 - POST /sell_item/{item_name}
   - Path param: `item_name` (string)
-  - Request body: JSON matching the `SaleRequest` model (see Data contract below).
-  - Decrements the `quantity` by the requested sale `quantity` if enough stock is available.
-  - Responses: success message with sold quantity and remaining quantity, or an error message if insufficient stock or item not found.
+  - Request body: JSON matching the `SaleRequest` model (quantity:int).
+  - Behavior: verifies item exists and that requested quantity is available, subtracts the sold quantity from the stored `quantity`, and returns the sold and remaining quantities.
+  - Responses: success message with `item_name`, `sold_quantity`, and `remaining_quantity`, or an error message if item not found or insufficient stock.
 
 Data contract (Item)
 
@@ -73,12 +73,3 @@ Data contract (Item)
 - quantity: integer
 - Wprice: float (wholesale price)
 - Rprice: float (retail price)
-
-SaleRequest contract
-
-- quantity: integer (number of units to sell)
-
-Edge cases and behavior for selling
-
-- If the requested `quantity` is greater than available stock, the endpoint returns an error and does not change stock.
-- The endpoint returns the updated remaining quantity on success.

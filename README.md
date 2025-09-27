@@ -61,9 +61,24 @@ API Endpoints
   - Path param: `item_name` (string)
   - Deletes the item with the given name.
 
+- POST /sell_item/{item_name}
+  - Path param: `item_name` (string)
+  - Request body: JSON matching the `SaleRequest` model (see Data contract below).
+  - Decrements the `quantity` by the requested sale `quantity` if enough stock is available.
+  - Responses: success message with sold quantity and remaining quantity, or an error message if insufficient stock or item not found.
+
 Data contract (Item)
 
 - name: string (unique identifier within collection)
 - quantity: integer
 - Wprice: float (wholesale price)
 - Rprice: float (retail price)
+
+SaleRequest contract
+
+- quantity: integer (number of units to sell)
+
+Edge cases and behavior for selling
+
+- If the requested `quantity` is greater than available stock, the endpoint returns an error and does not change stock.
+- The endpoint returns the updated remaining quantity on success.

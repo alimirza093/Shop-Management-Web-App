@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Body
-from pymongo import MongoClient
-from validations import Item
+from validations import Item , SaleRequest
 from db import collection
 
 if collection is None:
@@ -88,5 +87,28 @@ def delete_item(item_name: str):
             return {"message": "آئٹم کامیابی سے ختم ہو گیا۔"}
         else:
             return {"error": "آئٹم نہیں ملا۔"}
+    except Exception as e:
+        return {"error": str(e)}
+    
+
+
+@app.post("/sell_item/{item_name}")
+def sell_item(item_name: str, sale: SaleRequest):
+    try:
+        item = collection.find_one({"name": item_name})
+        if not item:
+            return {"error": "آئٹم نہیں ملا۔"}
+        if item["quantity"] < sale.quantity:
+            return {"error": "کافی مقدار میں آئٹم دستیاب نہیں ہے۔"}
+        new_quantity = item["quantity"] - sale.quantity
+        collection.update_one({"name": item_name}, {"$set": {"quantity": new_quantity}})
+        return {
+            "message": "آئٹم کامیابی سے بیچ دیا گیا۔",
+            "data": {
+                "item_name": item_name,
+                "sold_quantity": sale.quantity,
+                "remaining_quantity": new_quantity
+            }
+        }
     except Exception as e:
         return {"error": str(e)}

@@ -73,3 +73,25 @@ Data contract (Item)
 - quantity: integer
 - Wprice: float (wholesale price)
 - Rprice: float (retail price)
+
+SaleRequest model
+
+- quantity: integer (number of units to sell)
+
+Edge cases and notes
+
+- The `sell_item` endpoint checks availability and updates `quantity` atomically via a read-then-update pattern; consider using a MongoDB transaction or findOneAndUpdate with conditional update for concurrency safety.
+- The app currently considers `name` as the unique key but does not enforce a MongoDB unique index. Consider adding a unique index on `name` in production.
+- Input validation uses Pydantic for create requests and `SaleRequest` for sell requests. The update endpoint accepts a raw JSON body and skips keys with `null` values.
+- Responses are simple dictionaries with either a `message` and `data` or an `error` message. Consider standardizing to a consistent response schema and adding proper HTTP status codes.
+
+Developer checklist
+
+- [ ] Fix concurrency in `sell_item` to prevent race conditions (use conditional update or transactions).
+- [ ] Add a unique index for `name` in the collection.
+- [ ] Add more robust error handling and HTTP status codes.
+- [ ] Add tests (unit and integration) and CI.
+
+License
+
+- Add an appropriate license for your project.

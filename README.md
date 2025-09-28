@@ -5,93 +5,129 @@ Small FastAPI application for managing shop inventory items stored in MongoDB.
 
 Project overview
 
-- Built with FastAPI and PyMongo.
-- Provides simple CRUD endpoints for items.
-- Data model uses Pydantic (`Item`) with fields: `name` (str), `quantity` (int), `Wprice` (float), `Rprice` (float).
+# Shop Management Web App
 
-Dependencies
+A small full-stack inventory management app. Backend is a FastAPI service that uses MongoDB for storage. Frontend is a small React app (Vite) that consumes the backend API.
 
-- Python 3.9+ (project tested with 3.11/3.13)
-- FastAPI
-- Uvicorn (ASGI server for development)
+## Project structure (high level)
+
+- `main.py` - FastAPI backend exposing CRUD endpoints and a `sell_item` endpoint.
+- `db.py` - MongoDB connection (defaults to `mongodb://localhost:27017/`, database `inventory`, collection `items`).
+- `validations.py` - Pydantic models (`Item`, `SaleRequest`).
+- `frontend/` - Vite + React frontend that talks to the backend on `http://127.0.0.1:8000` by default.
+
+## Requirements
+
+- Python 3.9+
+- Node.js 16+ (for frontend/dev)
+- MongoDB running (default connection: `mongodb://localhost:27017/`)
+
+Backend Python dependencies
+
+See `requirements.txt` for pinned versions. Minimal runtime dependencies include:
+
+- fastapi
+- uvicorn
 - pymongo
 - pydantic
 
-Quick start
+## Backend: usage & endpoints
 
-1. Create and activate a virtual environment (Windows PowerShell):
+Start the backend (from project root):
 
 ```powershell
 python -m venv .venv; .\.venv\Scripts\Activate.ps1
-```
-
-2. Install dependencies:
-
-```powershell
 pip install -r requirements.txt
-```
-
-3. Ensure MongoDB is running locally at mongodb://localhost:27017/ or update `db.py` to point to your MongoDB URI.
-
-4. Start the app (development):
-
-```powershell
 uvicorn main:app --reload
 ```
 
-API Endpoints
+Available endpoints (as implemented in `main.py`):
 
 - POST /add_item
-  - Request body: JSON matching the `Item` model.
-  - Creates a new item if the `name` is not already present.
-  - Responses: success message with inserted item data or an error message.
+  - Body: `Item` JSON
+  - Adds a new item.
 
 - GET /get_all_items
-  - Returns all items (excludes `_id` in the response).
+  - Returns all items (response excludes MongoDB `_id`).
 
 - GET /get_item/{item_name}
-  - Path param: `item_name` (string)
-  - Returns the item with the given name.
+  - Retrieve a single item by `name`.
 
 - PUT /update_item/{item_name}
-  - Path param: `item_name` (string)
-  - Body: partial object with fields to update (any of `name`, `quantity`, `Wprice`, `Rprice`).
-  - Fields with `null` or missing values are ignored.
+  - Body: partial JSON with fields to update. Null values are ignored.
 
 - DELETE /delete_item/{item_name}
-  - Path param: `item_name` (string)
-  - Deletes the item with the given name.
+  - Deletes item by `name`.
 
 - POST /sell_item/{item_name}
-  - Path param: `item_name` (string)
-  - Request body: JSON matching the `SaleRequest` model (quantity:int).
-  - Behavior: verifies item exists and that requested quantity is available, subtracts the sold quantity from the stored `quantity`, and returns the sold and remaining quantities.
-  - Responses: success message with `item_name`, `sold_quantity`, and `remaining_quantity`, or an error message if item not found or insufficient stock.
+  - Body: `SaleRequest` JSON (example: `{ "quantity": 2 }`).
+  - Decrements `quantity` of the named item if stock is sufficient and returns remaining quantity.
 
-Data contract (Item)
+Data models (`validations.py`)
 
-- name: string (unique identifier within collection)
-- quantity: integer
-- Wprice: float (wholesale price)
-- Rprice: float (retail price)
+- `Item`:
+  - `name`: str
+  - `quantity`: int
+  - `Wprice`: float (wholesale price)
+  - `Rprice`: float (retail price)
 
-SaleRequest model
+- `SaleRequest`:
+  - `quantity`: int
 
-- quantity: integer (number of units to sell)
+Notes & recommendations (backend)
 
-Edge cases and notes
+- The backend treats `name` as the logical unique key. For production use, add a unique index on `name` in MongoDB to prevent duplicate inserts.
+- The `add_item` function currently returns simple dicts with `message`/`data` or `error` strings. Consider using proper HTTP status codes (201, 400, 404, 409) and a consistent response schema.
 
-- The `sell_item` endpoint checks availability and updates `quantity` atomically via a read-then-update pattern; consider using a MongoDB transaction or findOneAndUpdate with conditional update for concurrency safety.
-- The app currently considers `name` as the unique key but does not enforce a MongoDB unique index. Consider adding a unique index on `name` in production.
-- Input validation uses Pydantic for create requests and `SaleRequest` for sell requests. The update endpoint accepts a raw JSON body and skips keys with `null` values.
-- Responses are simple dictionaries with either a `message` and `data` or an `error` message. Consider standardizing to a consistent response schema and adding proper HTTP status codes.
+## Frontend: usage & notes
 
-Developer checklist
+The frontend is a Vite + React app located in `frontend/`. It expects the backend at `http://127.0.0.1:8000` by default (see `frontend/src/api.js`).
 
-- [ ] Fix concurrency in `sell_item` to prevent race conditions (use conditional update or transactions).
-- [ ] Add a unique index for `name` in the collection.
-- [ ] Add more robust error handling and HTTP status codes.
+Install and run the frontend (from project root or inside the `frontend/` folder):
+
+```powershell
+cd frontend
 - [ ] Add tests (unit and integration) and CI.
+npm install
+npm run dev
+```
+
+The frontend exposes a simple UI (RTL layout, Urdu labels) with the following features:
+
+- List all items
+- Add an item (name, quantity, retail and wholesale price)
+- Edit an item
+- Delete an item
+- Sell (decrease quantity) via the `sell_item` backend endpoint
+
+Implementation notes (frontend)
+
+- API base URL: `frontend/src/api.js` - update `API_URL` if backend runs on a different host/port.
+- `sellItem` in `api.js` sends a POST to `/sell_item/{name}` with a JSON body `{ quantity: N }` as required by the backend.
+- The project uses Vite + React; configuration is in `frontend/vite.config.js`.
+
+## Running the full stack locally
+
+1. Start MongoDB (ensure it listens at `mongodb://localhost:27017/` or change `db.py`).
+2. Start the backend (see instructions above).
+3. Start the frontend in a separate terminal.
+4. Open the frontend dev server URL that `npm run dev` prints (usually http://localhost:5173).
+
+## Troubleshooting
+
+- If fetch requests from the frontend fail, confirm the backend is running and CORS is configured if you serve frontend and backend on different origins. The current backend does not include an explicit CORS policy.
+- If `add_item` or `sell_item` behave unexpectedly, check MongoDB data (collection `items`) and review API responses for `error` messages.
+
+## Next improvements
+
+- Add CORS support on the backend to enable cross-origin fetches in different environments.
+- Add tests for backend endpoints and integration tests covering frontend-backend flows.
+- Add a unique index on `name` in MongoDB.
+- Standardize HTTP response codes and response schema.
+
+---
+
+If you'd like, I can now: (A) run `git status` and `git log -1` and push the README update, or (B) just leave the README update in the workspace and you can push. I will not modify any source code unless you ask.
 
 License
 

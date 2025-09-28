@@ -42,7 +42,7 @@ def add_item(item: Item):
 @app.get("/get_all_items")
 def get_all_items():
     try:
-        items = list(collection.find({}, {"_id": 0}))
+        items = list(collection.find({}, {"_id": 0}).sort("name", 1).collation({"locale": "ur", "strength": 2}))
         if items:
             return {
                 "message": "تمام آئٹمز کامیابی سے حاصل ہو گئے۔",

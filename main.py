@@ -1,22 +1,17 @@
-from fastapi import FastAPI, Body
-from fastapi.middleware.cors import CORSMiddleware
-from validations import Item , SaleRequest
-from db import collection
+from fastapi import FastAPI,Body
+from passlib.context import CryptContext
+from validations import Item,SaleRequest,LoginUser,ChangePass
+from db import collection,auth_collection
 
-if collection is None:
+
+if collection is None and auth_collection is None:
     raise Exception("Database connection failed")
 else:
     print("Database connected successfully")
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # for development, allow all origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
 
 @app.post("/add_item")
 def add_item(item: Item):
@@ -119,5 +114,47 @@ def sell_item(item_name: str, sale: SaleRequest):
                 "remaining_quantity": new_quantity
             }
         }
+    except Exception as e:
+        return {"error": str(e)}
+    
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+@app.post("/create_password")
+def create_password(user : LoginUser):
+    try:
+        stored = auth_collection.find_one({} , {"_id":0 , "password":1})
+        if stored:
+            return {"error": "پاسورڈ پہلے سے سیٹ ہے۔"}
+        hashed_password = pwd_context.hash(user.password)
+        auth_collection.insert_one({"password": hashed_password})
+        return {"message": "پاسورڈ کامیابی سے سیٹ ہو گیا۔"}
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/login")
+def login(user : LoginUser):
+    try:
+        stored = auth_collection.find_one({} , {"_id":0 , "password":1})
+        if not stored:
+            return {"error": "پاسورڈ سیٹ نہیں ہے۔ براہ کرم پہلے پاسورڈ سیٹ کریں۔"}
+        if pwd_context.verify(user.password , stored["password"]):
+            return {"message": "لاگ ان کامیاب ہو گیا۔"}
+        else:
+            return {"error": "پاسورڈ غلط ہے۔"}
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/change_password")
+def change_password(change_pass : ChangePass):
+    try:
+        stored = auth_collection.find_one({} , {"_id":0 , "password":1})
+        if not stored:
+            return {"error": "پاسورڈ سیٹ نہیں ہے۔ براہ کرم پہلے پاسورڈ سیٹ کریں۔"}
+        if not pwd_context.verify(change_pass.old_password , stored["password"]):
+            return {"error": "پرانا پاسورڈ غلط ہے۔"}
+        if change_pass.old_password == change_pass.new_password:
+            return {"error": "نیا پاسورڈ پرانے سے مختلف ہونا چاہیے۔"}
+        new_hashed_password = pwd_context.hash(change_pass.new_password)
+        auth_collection.update_one({} , {"$set": {"password": new_hashed_password}})
+        return {"message": "پاسورڈ کامیابی سے تبدیل ہو گیا۔"}
     except Exception as e:
         return {"error": str(e)}

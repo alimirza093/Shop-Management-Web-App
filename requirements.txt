@@ -2,3 +2,4 @@ fastapi==0.95.2
 uvicorn==0.22.0
 pymongo==4.4.0
 pydantic==1.10.11
+mangum==0.19.0

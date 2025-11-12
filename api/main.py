@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware  # 👈 ADD THI
 from passlib.context import CryptContext
 from validations import Item, SaleRequest, LoginUser, ChangePass
 from db import collection, auth_collection
+from mangum import Mangum
 
 
 if collection is None and auth_collection is None:
@@ -190,3 +191,5 @@ def change_password(change_pass: ChangePass):
         return {"message": "پاسورڈ کامیابی سے تبدیل ہو گیا۔"}
     except Exception as e:
         return {"error": str(e)}
+
+handler = Mangum(app) 

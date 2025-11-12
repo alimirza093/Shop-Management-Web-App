@@ -1,20 +1,97 @@
-import React, { useEffect, useState } from "react";
-import { getItems, addItem, deleteItem, updateItem, sellItem } from "./api.js";
+import React, { useEffect, useState, useRef } from "react";
+import Cookies from "js-cookie"
+import { getItems, addItem, deleteItem, updateItem, sellItem, checkPassword, getItemSuggestions } from "./api.js";
+import { Link, useNavigate } from 'react-router-dom'
 
 function App() {
   const [items, setItems] = useState([]);
+  const [items2, setItems2] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [form, setForm] = useState({ name: "", quantity: 0, Rprice: 0, Wprice: 0 });
   const [prevName, setPrevName] = useState("");
   const [isSell, setIsSell] = useState(false);
   const [mode, setMode] = useState("add");
+  const [isNewUser, setIsNewUser] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = useRef(null);
 
   // Fetch items from backend
   useEffect(() => {
+    checkPassword().then((data) => {
+      if (data.data == 1) {
+        setIsNewUser(false)
+      }
+      else {
+        setIsNewUser(true)
+        navigate("/set-password")
+      }
+    })
+
+    const authCookie = Cookies.get("auth");
+    if (!authCookie) {
+      console.warn("🔒 Cookie missing — redirecting to login...");
+      navigate("/login");
+      return;
+    }
+
     getItems().then((data) => {
-      if (data.data) setItems(data.data);
+      if (data.data) {
+        setItems(data.data)
+        setItems2(data.data)
+      };
+
     });
+  }, []);
+
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      const term = searchTerm.trim();
+
+      if (term.length > 0) {
+        getItemSuggestions(term)
+          .then((res) => {
+            if (res.data && Array.isArray(res.data)) {
+              setSuggestions(res.data);
+              console.log("✅ Got suggestions:", res.data);
+
+              // 🔍 Filter table live as you type
+              const matched = items2.filter((i) =>
+                i.name.toLowerCase().includes(term.toLowerCase())
+              );
+              setItems(matched);
+            } else {
+              setSuggestions([]);
+              setItems(items2); // restore if nothing found
+            }
+          })
+          .catch((err) => console.error("Suggestion error:", err));
+      } else {
+        getItems().then((data) => {
+          if (data.data) {
+            setItems(data.data)
+            setItems2(data.data)
+          };
+
+        });
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchTerm]);
+
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSuggestions(false); // Hide suggestions when clicked outside
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleAdd = async (e) => {
@@ -71,8 +148,107 @@ function App() {
     }
   }
 
+  const setChangePassword = (e) => {
+
+  }
+
   return (
     <div style={{ maxWidth: "auto", margin: "auto", padding: "1rem", direction: "rtl" }}>
+      <div
+        ref={searchRef}
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "1rem",
+          flexWrap: "wrap",
+          gap: "10px",
+        }}>
+        <input
+          type="text"
+          placeholder="🔍 آئٹم تلاش کریں..."
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setShowSuggestions(true);
+          }}
+          style={{
+            padding: "8px",
+            fontSize: "14px",
+            borderRadius: "8px",
+            border: "1px solid #ccc",
+            width: "100%",
+            textAlign: "right",
+          }}
+        />
+
+        {/* ✅ Suggestions Dropdown
+        {showSuggestions && suggestions.length > 0 && (
+          <ul
+            style={{
+              position: "absolute",
+              top: "4rem",
+              left: "50%",
+              transform: "translateX(-50%)", // ✅ Center dropdown under input
+              width: "95%",
+              background: "white",
+              border: "1px solid #ccc",
+              borderRadius: "8px",
+              padding: 0,
+              listStyle: "none",
+              zIndex: 9999,
+              boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+              maxHeight: "200px",
+              overflowY: "auto",
+              textAlign: "right",
+              transition: "all 0.2s ease-in-out",
+              margin: '0 auto'
+            }}
+          >
+            {suggestions.map((item, index) => (
+              <li
+                key={index}
+                onClick={() => {
+                  setSearchTerm(item);
+                  setShowSuggestions(false);
+                  const matched = items2.filter((i) => i.name === item);
+                  if (matched.length > 0) setItems(matched);
+
+                }}
+                style={{
+                  padding: "8px",
+                  cursor: "pointer",
+                }}
+                onMouseDown={(e) => e.preventDefault()}
+                onMouseEnter={(e) => (e.target.style.backgroundColor = "#f1f1f1")}
+                onMouseLeave={(e) => (e.target.style.backgroundColor = "white")}
+              >
+                {item}
+              </li>
+            ))}
+          </ul>
+        )} */}
+
+        <Link to="/change-password" style={{
+          textDecoration: 'none',
+          color: "white"
+        }}>
+          <button
+            onClick={setChangePassword}
+            style={{
+              backgroundColor: "#4CAF50",
+              color: "white",
+              padding: "10px 20px",
+              border: "none",
+              borderRadius: "5px",
+              cursor: "pointer",
+            }}
+          >
+
+            پاس ورڈ تبدیل کریں 🔒
+          </button>
+        </Link>
+      </div>
       <h1 style={{ textAlign: "center", marginTop: 0 }}>📦 دکان کا ذخیرہ</h1>
 
       {/* Add Item Button */}
@@ -190,7 +366,7 @@ function App() {
                   </button>
                   <button onClick={() => handleDelete(item.name)}>🗑️</button>
                   <button onClick={() => {
-                    setForm({...item,quantity: null})
+                    setForm({ ...item, quantity: null })
                     setShowForm(true)
                     setIsSell(true)
                     setMode("decrease");

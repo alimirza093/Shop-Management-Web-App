@@ -14,10 +14,9 @@ from db import collection, auth_collection
 from mangum import Mangum
 
 # Initialize database connection check
-if collection is None and auth_collection is None:
-    raise Exception("Database connection failed")
-else:
-    print("Database connected successfully")
+# Don't fail at import time - let the routes handle DB errors
+if collection is None or auth_collection is None:
+    print("Warning: Database connection not available. Set DB_URL environment variable.")
 
 # Create FastAPI app
 # Disable automatic redirects for trailing slashes to avoid Vercel routing issues
@@ -210,5 +209,24 @@ def change_password(change_pass: ChangePass):
         return {"error": str(e)}
 
 
+# Add root route for health check
+@app.get("/")
+@app.get("/api")
+def root():
+    return {
+        "message": "Shop Management API is running",
+        "status": "ok",
+        "database": "connected" if collection and auth_collection else "not connected"
+    }
+
 # Create Mangum handler for Vercel serverless
-handler = Mangum(app)
+# This is the entry point that Vercel will call
+try:
+    handler = Mangum(app, lifespan="off")
+    print("Handler created successfully")
+except Exception as e:
+    print(f"Error creating handler: {str(e)}")
+    raise
+
+# Ensure handler is accessible
+__all__ = ["handler", "app"]

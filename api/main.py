@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Body, Query
 from fastapi.middleware.cors import CORSMiddleware  # 👈 ADD THI
 from passlib.context import CryptContext
+import os
 from validations import Item, SaleRequest, LoginUser, ChangePass
 from db import collection, auth_collection
 from mangum import Mangum
@@ -14,12 +15,19 @@ else:
 app = FastAPI()
 
 # ✅ Allow requests from your React app
+# Get allowed origins from environment variable or use defaults
+allowed_origins = os.environ.get("ALLOWED_ORIGINS", "").split(",") if os.environ.get("ALLOWED_ORIGINS") else []
+# Add default localhost origins for development
+default_origins = [
+    "http://localhost:5173",  # React dev server (Vite)
+    "http://127.0.0.1:5173",
+]
+# Combine and filter out empty strings
+all_origins = [origin for origin in allowed_origins + default_origins if origin]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # React dev server (Vite)
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=all_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

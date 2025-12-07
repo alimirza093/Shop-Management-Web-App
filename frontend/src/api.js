@@ -1,4 +1,4 @@
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "https://shop-management-web-app.vercel.app";
 
 export async function checkPassword() {
   const res = await fetch(`${API_URL}/check_password`, {
